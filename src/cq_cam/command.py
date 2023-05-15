@@ -6,7 +6,7 @@ The interpreter is responsible for lowering the RS274//NGC language into its equ
 The interpreter should reject input commands or canonical functions that address non-existent equipment.
 
 The command syntax for various commands is shown below:
-Rapid Linear Motioun: G0 X… Y… Z…
+Rapid Linear Motion: G0 X… Y… Z…
 Linear Motion at Feed Rate: G1 X… Y… Z… F…
 Arc at Feed Rate (Center Format Arc): G2 X… Y… Z… I… J… K… F…
 Simple Drill: <G98> G81 X… Y… Z… R… L…
@@ -121,9 +121,6 @@ class CommandVector:
         self.y = y
         self.z = z
 
-    def __str__(self) -> str:
-        return f"{self.x} {self.y} {self.z}"
-
     def __eq__(self, __value: CommandVector) -> bool:
         if self.x == __value.x and self.y == __value.y and self.z == __value.z:
             return True
@@ -146,23 +143,21 @@ class CommandVector:
 
 
 class Command(ABC):
-    modal = None
+    pass
 
 
 class MotionCommand(Command, ABC):
-    max_depth: float | None
-    ais_color = "red"
-    ais_alt_color = "darkred"
-    feed: float | None
+    modal = None
     start: CommandVector
     end: CommandVector
+    ais_color = "red"
+    ais_alt_color = "darkred"
 
     def __init__(
         self,
         end: CommandVector,
         start: CommandVector,
         arrow=False,
-        feed: float | None = None,
     ):
         if start is not None:
             if end.x is None:
@@ -174,24 +169,10 @@ class MotionCommand(Command, ABC):
         self.start = start
         self.end = end
         self.arrow = arrow
-        self.feed = feed
-
-    def __str__(self) -> str:
-        return f"{self.modal} {self.end}"
 
     @classmethod
     def abs(cls, x=None, y=None, z=None, start: CommandVector | None = None, **kwargs):
         return cls(end=CommandVector(x=x, y=y, z=z), start=start, **kwargs)
-
-    @classmethod
-    def rel(cls, x=None, y=None, z=None, **kwargs):
-        warnings.warn("Relative CV is deprecated", DeprecationWarning)
-        return cls(end=RelativeCV(x=x, y=y, z=z), **kwargs)
-
-    def print_feed(self):
-        if self.feed and self.modal != str(Path.RAPID):
-            return f"{Feed(self.feed)}"
-        return ""
 
     @abstractmethod
     def to_ais_shape(
@@ -200,15 +181,93 @@ class MotionCommand(Command, ABC):
         pass
 
 
-class ConfigCommand(Command, ABC):
-    pass
+class RapidCommand(MotionCommand, ABC):
+    modal = str(Path.RAPID)
 
+    def to_ais_shape(self, as_edges=False, alt_color=False):
+        start = cq.Vector(self.start.x, self.start.y, self.start.z)
+        end = self.end.to_vector(start)
+        if start == end:
+            return None, end
 
-class Linear(MotionCommand, ABC):
+        if as_edges:
+            return cq.Edge.makeLine(start, end), end
+
+        shape = AIS_Line(
+            Geom_CartesianPoint(start.toPnt()), Geom_CartesianPoint(end.toPnt())
+        )
+        if self.arrow:
+            shape.Attributes().SetLineArrowDraw(True)
+
+        shape.SetColor(
+            cached_occ_color(self.ais_alt_color if alt_color else self.ais_color)
+        )
+
+        return shape, end
+
     def __str__(self) -> str:
         modal = self.modal
         xyz = str(XYZ(self.end))
-        feed = self.print_feed()
+        words = [modal, xyz]
+
+        return " ".join(words)
+
+
+class Rapid(RapidCommand):
+    ais_color = "green"
+
+
+class PlungeRapid(Rapid):
+    ais_color = "yellow"
+
+    # TODO apply plunge feed rate
+
+    def __init__(self, end, start, **kwargs):
+        if end.x is not None or end.y is not None:
+            raise RuntimeError("Plunge can only operate on z axis")
+        super().__init__(end, start, **kwargs)
+
+    @classmethod
+    def abs(cls, z=None, start: CommandVector | None = None, **kwargs):
+        return cls(end=CommandVector(z=z), start=start, **kwargs)
+
+
+class Retract(Rapid):
+    """Rapid retract"""
+
+    ais_color = "blue"
+
+    def __init__(self, end, start, **kwargs):
+        if end.x is not None or end.y is not None:
+            raise RuntimeError("Retract can only operate on z axis")
+        super().__init__(end, start, **kwargs)
+
+    @classmethod
+    def abs(cls, z=None, start: CommandVector | None = None, **kwargs):
+        return cls(end=CommandVector(z=z), start=start, **kwargs)
+
+
+class FeedRateCommand(MotionCommand, ABC):
+    feed: float | None
+
+    def __init__(
+        self,
+        end: CommandVector,
+        start: CommandVector,
+        arrow=False,
+        feed: float | None = None,
+    ):
+        self.feed = feed
+        super().__init__(end, start, arrow)
+
+
+class Cut(FeedRateCommand):
+    modal = str(Path.LINEAR)
+
+    def __str__(self) -> str:
+        modal = self.modal
+        xyz = str(XYZ(self.end))
+        feed = str(Feed(self.feed))
         words = [modal, xyz]
         if feed != "":
             words.append(feed)
@@ -236,19 +295,6 @@ class Linear(MotionCommand, ABC):
 
         return shape, end
 
-    def flip(self, new_end: cq.Vector) -> tuple[MotionCommand, cq.Vector]:
-        start = new_end - self.relative_end
-        return self.__class__(-self.relative_end), start
-
-
-class Rapid(Linear):
-    modal = str(Path.RAPID)
-    ais_color = "green"
-
-
-class Cut(Linear):
-    modal = str(Path.LINEAR)
-
 
 class PlungeCut(Cut):
     ais_color = "yellow"
@@ -264,78 +310,28 @@ class PlungeCut(Cut):
     def abs(cls, z=None, start: CommandVector | None = None, **kwargs):
         return cls(end=CommandVector(z=z), start=start, **kwargs)
 
-    @classmethod
-    def rel(cls, z=None, **kwargs):
-        warnings.warn("Relative CV is deprecated", DeprecationWarning)
-        return cls(end=RelativeCV(z=z), **kwargs)
-
-
-class PlungeRapid(Rapid):
-    ais_color = "yellow"
-
-    # TODO apply plunge feed rate
-
-    def __init__(self, end, start, **kwargs):
-        if end.x is not None or end.y is not None:
-            raise RuntimeError("Plunge can only operate on z axis")
-        super().__init__(end, start, **kwargs)
-
-    @classmethod
-    def abs(cls, z=None, start: CommandVector | None = None, **kwargs):
-        return cls(end=CommandVector(z=z), start=start, **kwargs)
-
-    @classmethod
-    def rel(cls, z=None, **kwargs):
-        warnings.warn("Relative CV is deprecated", DeprecationWarning)
-        return cls(end=RelativeCV(z=z), **kwargs)
-
-
-class Retract(Rapid):
-    """Rapid retract"""
-
-    ais_color = "blue"
-
-    def __init__(self, end, start, **kwargs):
-        if end.x is not None or end.y is not None:
-            raise RuntimeError("Retract can only operate on z axis")
-        super().__init__(end, start, **kwargs)
-
-    @classmethod
-    def abs(cls, z=None, start: CommandVector | None = None, **kwargs):
-        return cls(end=CommandVector(z=z), start=start, **kwargs)
-
-    @classmethod
-    def rel(cls, z=None, **kwargs):
-        warnings.warn("Relative CV is deprecated", DeprecationWarning)
-        return cls(end=RelativeCV(z=z), **kwargs)
-
 
 # CIRCULAR MOTION
-
-
-class Circular(MotionCommand, ABC):
-    end: CommandVector
+class Circular(FeedRateCommand, ABC):
     center: CommandVector
     mid: CommandVector
 
     def __init__(
         self,
-        end: CommandVector,
         center: CommandVector,
         mid: CommandVector,
-        start: CommandVector,
         **kwargs,
     ):
-        super().__init__(end, start, **kwargs)
         self.center = center
         self.mid = mid
+        super().__init__(**kwargs)
 
     def __str__(self) -> str:
         modal = self.modal
         xyz = str(XYZ(self.end))
         center = self.center.to_vector(self.start, relative=True)
         ijk = str(IJK(center))
-        feed = self.print_feed()
+        feed = str(Feed(self.feed))
         words = [modal, xyz, ijk]
         if feed != "":
             words.append(feed)
@@ -379,6 +375,10 @@ class CircularCCW(Circular):
     modal = str(Path.ARC_CCW)
 
 
+class ConfigCommand(Command, ABC):
+    pass
+
+
 class StartSequence(ConfigCommand):
     speed: int | None
     coolant: CoolantState | None
@@ -399,9 +399,7 @@ class StartSequence(ConfigCommand):
         if self.coolant is not None:
             words.append(f"{self.coolant}")
 
-        gcode_str = " ".join(words)
-
-        return gcode_str
+        return " ".join(words)
 
 
 class StopSequence(ConfigCommand):
@@ -416,8 +414,7 @@ class StopSequence(ConfigCommand):
         if self.coolant is not None:
             words.append(f"{CoolantState.OFF}")
 
-        gcode_str = " ".join(words)
-        return gcode_str
+        return " ".join(words)
 
 
 class SafetyBlock(ConfigCommand):

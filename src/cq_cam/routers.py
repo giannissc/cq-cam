@@ -166,24 +166,24 @@ def route_edge(
             start_cv = CommandVector.from_vector(edge.positionAt(start_p, "parameter"))
             commands.append(
                 cmd(
-                    end=end1,
                     center=center,
                     mid=mid1,
                     start=start_cv,
-                    arrow=arrow,
+                    end=end1,
                     feed=feed,
+                    arrow=arrow,
                 )
             )
             start_cv = end1
             mid2 = CommandVector.from_vector(edge.positionAt(mid2_p, "parameter"))
             commands.append(
                 cmd(
-                    end=end_cv,
                     center=center,
                     mid=mid2,
                     start=start_cv,
-                    arrow=arrow,
+                    end=end_cv,
                     feed=feed,
+                    arrow=arrow,
                 )
             )
         elif sp == ep:
@@ -195,12 +195,12 @@ def route_edge(
             mid = CommandVector.from_vector(edge.positionAt(mid_p, "parameter"))
             commands.append(
                 cmd(
-                    end=end_cv,
                     center=center,
                     mid=mid,
                     start=start_cv,
-                    arrow=arrow,
+                    end=end_cv,
                     feed=feed,
+                    arrow=arrow,
                 )
             )
 
