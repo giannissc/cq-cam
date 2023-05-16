@@ -8,6 +8,7 @@ from OCP.Geom import Geom_Plane
 from OCP.GeomProjLib import GeomProjLib
 from OCP.TopAbs import TopAbs_REVERSED
 
+from cq_cam.command import CommandVector
 from cq_cam.operations.tabs import Tabs, Transition
 from cq_cam.routers import route_wires
 from cq_cam.utils.geometry_op import offset_wire
@@ -83,7 +84,8 @@ def profile(
 
         toolpaths += layers
 
-    commands = route_wires(job, toolpaths)
+    start = CommandVector()
+    commands = route_wires(job, toolpaths, start_cv=start)
     return commands
 
 

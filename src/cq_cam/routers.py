@@ -70,9 +70,13 @@ def rapid_to(
 ):
     commands = [Retract.abs(z=rapid_height, start=start)]
     start.z = rapid_height
-    commands.append(Rapid.abs(x=end.x, y=end.y, start=start, arrow=True))
-    start.x = end.x
-    start.y = end.y
+
+    # Don't move if you are already at the correct location
+    if start.x != end.x or start.y != end.y:
+        commands.append(Rapid.abs(x=end.x, y=end.y, start=start, arrow=True))
+        start.x = end.x
+        start.y = end.y
+
     if safe_plunge_height is None:
         commands.append(
             PlungeCut.abs(z=end.z, start=start, arrow=True, feed=plunge_feed)
@@ -232,10 +236,14 @@ def route_edge(
     return commands, ep
 
 
-def route_wires(job: "Job", wires: list[Union[cq.Wire, cq.Edge]], stepover=None):
+def route_wires(
+    job: "Job",
+    wires: list[Union[cq.Wire, cq.Edge]],
+    stepover=None,
+    start_cv: CommandVector = CommandVector(),
+):
     commands = []
     previous_wire_end = None
-    start_cv = CommandVector()
 
     for wire in wires:
         # Convert wires to edges
@@ -311,10 +319,14 @@ def shift_polygon(polygon: Path, i: int):
     return polygon
 
 
-def route_polyface_outers(job: "Job", polyfaces: list[PathFace], stepover=None):
+def route_polyface_outers(
+    job: "Job",
+    polyfaces: list[PathFace],
+    stepover=None,
+    start_cv: CommandVector = CommandVector(),
+) -> list[MotionCommand]:
     commands = []
     previous_wire_end = None
-    start_cv = CommandVector()
 
     for polyface in polyfaces:
         poly = polyface.outer

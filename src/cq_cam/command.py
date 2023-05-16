@@ -99,6 +99,7 @@ from cq_cam.groups import (
     CutterState,
     DistanceMode,
     FeedRateControlMode,
+    GCodeGroup,
     LengthCompensation,
     Path,
     PlannerControlMode,
@@ -126,6 +127,9 @@ class CommandVector:
             return True
         return False
 
+    def __str__(self) -> str:
+        return f"({self.x} {self.y} {self.z})"
+
     @classmethod
     def from_vector(cls, v: cq.Vector):
         return cls(v.x, v.y, v.z)
@@ -147,7 +151,7 @@ class Command(ABC):
 
 
 class MotionCommand(Command, ABC):
-    modal = None
+    modal: GCodeGroup
     start: CommandVector
     end: CommandVector
     ais_color = "red"
