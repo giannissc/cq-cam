@@ -179,23 +179,21 @@ class MotionCommand(Command, ABC):
         return cls(end=CommandVector(x=x, y=y, z=z), start=start, **kwargs)
 
     @abstractmethod
-    def to_ais_shape(
-        self, as_edges=False, alt_color=False
-    ) -> tuple[AIS_Shape, cq.Vector]:
+    def to_ais_shape(self, as_edges=False, alt_color=False) -> AIS_Shape:
         pass
 
 
 class RapidCommand(MotionCommand, ABC):
     modal = str(Path.RAPID)
 
-    def to_ais_shape(self, as_edges=False, alt_color=False):
+    def to_ais_shape(self, as_edges=False, alt_color=False) -> AIS_Shape:
         start = cq.Vector(self.start.x, self.start.y, self.start.z)
         end = self.end.to_vector(start)
         if start == end:
-            return None, end
+            return None
 
         if as_edges:
-            return cq.Edge.makeLine(start, end), end
+            return cq.Edge.makeLine(start, end)
 
         shape = AIS_Line(
             Geom_CartesianPoint(start.toPnt()), Geom_CartesianPoint(end.toPnt())
@@ -207,7 +205,7 @@ class RapidCommand(MotionCommand, ABC):
             cached_occ_color(self.ais_alt_color if alt_color else self.ais_color)
         )
 
-        return shape, end
+        return shape
 
     def __str__(self) -> str:
         modal = self.modal
@@ -223,8 +221,6 @@ class Rapid(RapidCommand):
 
 class PlungeRapid(Rapid):
     ais_color = "yellow"
-
-    # TODO apply plunge feed rate
 
     def __init__(self, end, start, **kwargs):
         if end.x is not None or end.y is not None:
@@ -278,14 +274,14 @@ class Cut(FeedRateCommand):
 
         return " ".join(words)
 
-    def to_ais_shape(self, as_edges=False, alt_color=False):
+    def to_ais_shape(self, as_edges=False, alt_color=False) -> AIS_Shape:
         start = cq.Vector(self.start.x, self.start.y, self.start.z)
         end = self.end.to_vector(start)
         if start == end:
-            return None, end
+            return None
 
         if as_edges:
-            return cq.Edge.makeLine(start, end), end
+            return cq.Edge.makeLine(start, end)
 
         shape = AIS_Line(
             Geom_CartesianPoint(start.toPnt()), Geom_CartesianPoint(end.toPnt())
@@ -297,13 +293,11 @@ class Cut(FeedRateCommand):
             cached_occ_color(self.ais_alt_color if alt_color else self.ais_color)
         )
 
-        return shape, end
+        return shape
 
 
 class PlungeCut(Cut):
     ais_color = "yellow"
-
-    # TODO apply plunge feed rate
 
     def __init__(self, end, start, **kwargs):
         if end.x is not None or end.y is not None:
@@ -341,7 +335,7 @@ class Circular(FeedRateCommand, ABC):
             words.append(feed)
         return " ".join(words)
 
-    def to_ais_shape(self, as_edges=False, alt_color=False):
+    def to_ais_shape(self, as_edges=False, alt_color=False) -> AIS_Shape:
         end = self.end.to_vector(self.start)
         mid = self.mid.to_vector(self.start)
 
@@ -361,14 +355,14 @@ class Circular(FeedRateCommand, ABC):
                 edge = cq.Edge.makeLine(self.start, end)
             except:
                 # Too small to render ?
-                return None, end
+                return None
         if as_edges:
-            return edge, end
+            return edge
         shape = AIS_Shape(edge.wrapped)
         shape.SetColor(
             cached_occ_color(self.ais_alt_color if alt_color else self.ais_color)
         )
-        return shape, end
+        return shape
 
 
 class CircularCW(Circular):
