@@ -68,24 +68,25 @@ def rapid_to(
     safe_plunge_height=None,
     plunge_feed: float | None = None,
 ):
-    commands = [Retract.abs(z=rapid_height, start=start)]
+    commands = [Retract.abs(z=rapid_height, start=start, comment="retract to rapid_height")]
     start = commands[-1].end
 
     # Don't move if you are already at the correct location
     if start.x != end.x or start.y != end.y:
-        commands.append(Rapid.abs(x=end.x, y=end.y, start=start, arrow=True))
+        commands.append(Rapid.abs(x=end.x, y=end.y, start=start, arrow=True, comment="rapid to XY position "))
         start = commands[-1].end
 
     if safe_plunge_height is None:
         commands.append(
-            PlungeCut.abs(z=end.z, start=start, arrow=True, feed=plunge_feed)
+            PlungeCut.abs(z=end.z, start=start, arrow=True,
+                          feed=plunge_feed, comment="linear plunge to start position")
         )
     else:
-        commands.append(PlungeRapid.abs(z=safe_plunge_height, start=start, arrow=True))
+        commands.append(PlungeRapid.abs(z=safe_plunge_height, start=start, arrow=True, comment="rapid plunge to safe_plunge_height"))
         start = commands[-1].end
         if safe_plunge_height > end.z:
             commands.append(
-                PlungeCut.abs(z=end.z, start=start, arrow=True, feed=plunge_feed)
+                PlungeCut.abs(z=end.z, start=start, arrow=True, feed=plunge_feed, comment="linear plunge to start position")
             )
     return commands
 
@@ -147,8 +148,7 @@ def route_edge(
     start_cv = AddressVector.from_vector(sp)
     end_cv = AddressVector.from_vector(ep)
     if geom_type == "LINE":
-        # commands.append(Cut(end_cv, arrow=edge_i % 5 == 0))
-        commands.append(Cut(end_cv, start_cv, arrow=arrow, feed=feed))
+        commands.append(Cut(end_cv, start_cv, arrow=arrow, feed=feed, comment="route_edge - Line"))
 
     elif geom_type == "ARC" or geom_type == "CIRCLE":
         if start_p is None:
@@ -175,6 +175,7 @@ def route_edge(
                     end=end1,
                     feed=feed,
                     arrow=arrow,
+                    comment="route_edge - Circle 1"
                 )
             )
             start_cv = end1
@@ -187,12 +188,13 @@ def route_edge(
                     end=end_cv,
                     feed=feed,
                     arrow=arrow,
+                    comment="route_edge - Circle 2"
                 )
             )
         elif sp == ep:
             # Really tiny arc, might as well just cut it straight
             # TODO verify the sanity
-            commands.append(Cut(end=end_cv, start=start_cv, arrow=arrow, feed=feed))
+            commands.append(Cut(end=end_cv, start=start_cv, arrow=arrow, feed=feed, comment="route_edge - Tiny Arc"))
         else:
             mid_p = np.linspace(start_p, end_p, 3)[1]
             mid = AddressVector.from_vector(edge.positionAt(mid_p, "parameter"))
@@ -204,6 +206,7 @@ def route_edge(
                     end=end_cv,
                     feed=feed,
                     arrow=arrow,
+                    comment="route_edge - Arc"
                 )
             )
 
@@ -225,6 +228,7 @@ def route_edge(
                     start_cv,
                     arrow=arrow,
                     feed=feed,
+                    comment="route_edge - Spline"
                 )
             )
             start_cv = end_cv_int
@@ -273,7 +277,7 @@ def route_wires(
             if param:
                 start = edges[0].positionAt(param, "parameter")
             commands.append(
-                Cut(AddressVector.from_vector(start), previous_pos, feed=job.feed)
+                Cut(AddressVector.from_vector(start), previous_pos, feed=job.feed, comment="shift_edge move")
             )
         else:
             # Create simple transition between toolpaths
@@ -357,7 +361,7 @@ def route_polyface_outers(
             start.x = closest_point[0]
             start.y = closest_point[1]
             commands.append(
-                Cut.abs(start.x, start.y, polyface.depth, previous_pos, feed=job.feed)
+                Cut.abs(start.x, start.y, polyface.depth, previous_pos, feed=job.feed, comment="shift_polygon move")
             )
         else:
             # Create simple transition between toolpaths
@@ -372,13 +376,14 @@ def route_polyface_outers(
         previous_pos = commands[-1].end
         for x, y in poly[1:]:
             commands.append(
-                Cut.abs(x, y, polyface.depth, start=previous_pos, feed=job.feed)
+                Cut.abs(x, y, polyface.depth, start=previous_pos, feed=job.feed, comment="path move")
             )
             previous_pos = commands[-1].end
 
         if closest_point:
             commands.append(
-                Cut.abs(*closest_point, polyface.depth, previous_pos, feed=job.feed)
+                Cut.abs(*closest_point, polyface.depth,
+                        previous_pos, feed=job.feed, comment="closest point move")
             )
             previous_wire_end = closest_point
         else:

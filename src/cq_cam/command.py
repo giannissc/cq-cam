@@ -124,7 +124,11 @@ from cq_cam.visualize import cached_occ_color
 
 
 class Command(ABC):
-    pass
+    comment: str
+
+    def __init__(self, comment:str = ""):
+        self.comment = comment
+        
 
 
 class MotionCommand(Command, ABC):
@@ -200,6 +204,8 @@ class RapidCommand(MotionCommand, ABC):
         words = [modal, xyz]
 
         # words.append(f"({XYZ(self.start)})")
+        # if self.comment != "":
+        #     words.append(f"({self.comment})")
 
         return " ".join(words)
 
@@ -263,6 +269,8 @@ class Cut(FeedRateCommand):
             words.append(feed)
 
         # words.append(f"({XYZ(self.start)})")
+        # if self.comment != "":
+        #     words.append(f"({self.comment})")
 
         return " ".join(words)
 
@@ -332,6 +340,8 @@ class Circular(FeedRateCommand, ABC):
             words.append(feed)
 
         # words.append(f"({XYZ(self.start)})")
+        # if self.comment != "":
+        #     words.append(f"({self.comment})")
         return " ".join(words)
 
     def to_ais_shape(self, as_edges=False, alt_color=False) -> AIS_Shape:
