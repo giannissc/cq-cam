@@ -283,7 +283,7 @@ class Job:
         )
 
     def save_gcode(self, file_name):
-        gcode = str(self)
+        gcode = self.to_gcode()
         with open(file_name, "w") as f:
             f.write(gcode)
 
