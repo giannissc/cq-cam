@@ -20,12 +20,15 @@ class Drill(Operation):
     """
     o: Union[cq.Workplane, list[_op_o_shapes], _op_o_shapes] = None
     depth: float = None
+    previous_pos: AddressVector | None = None
 
     def __post_init__(self):
         # TODO max depth
         # TODO evacuate chips?
         transform_f = self.job.top.toWorldCoords
         drill_vectors: list[cq.Vector] = []
+        if self.previous_pos is None:
+            self.previous_pos = AddressVector()
 
         if self.o is None:
             raise OperationError("o must be defined")
@@ -69,17 +72,18 @@ class Drill(Operation):
             last = drill_point
 
         depth = -abs(self.depth)
-        previous_pos = AddressVector()
         for point in ordered_drill_points:
             ops = []
-            ops.append(Rapid.abs(z=self.job.op_safe_height, start=previous_pos))
-            previous_pos = ops[-1].end
-            ops.append(Rapid.abs(x=point[0], y=point[1], start=previous_pos))
-            previous_pos = ops[-1].end
-            ops.append(Rapid.abs(z=0, start=previous_pos))
-            previous_pos = ops[-1].end
-            ops.append(PlungeCut.abs(z=depth, feed=self.job.feed, start=previous_pos))
-            previous_pos = ops[-1].end
+            ops.append(Rapid.abs(z=self.job.op_safe_height, start=self.previous_pos))
+            self.previous_pos = ops[-1].end
+            ops.append(Rapid.abs(x=point[0], y=point[1], start=self.previous_pos))
+            self.previous_pos = ops[-1].end
+            ops.append(Rapid.abs(z=0, start=self.previous_pos))
+            self.previous_pos = ops[-1].end
+            ops.append(
+                PlungeCut.abs(z=depth, feed=self.job.feed, start=self.previous_pos)
+            )
+            self.previous_pos = ops[-1].end
             cut_sequences.append(ops)
         cut_sequences = flatten_list(cut_sequences)
         self.commands = cut_sequences

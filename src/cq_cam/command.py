@@ -126,9 +126,8 @@ from cq_cam.visualize import cached_occ_color
 class Command(ABC):
     comment: str
 
-    def __init__(self, comment:str = ""):
+    def __init__(self, comment: str = ""):
         self.comment = comment
-        
 
 
 class MotionCommand(Command, ABC):

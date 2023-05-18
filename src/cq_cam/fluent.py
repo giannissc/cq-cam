@@ -161,7 +161,13 @@ class Job:
             raise ValueError('Set at least one of "outer_offset" or "inner_offset"')
         outer_wires, inner_wires = extract_wires(shape)
 
+        if self.operations:
+            previous_pos = self.operations[-1].commands[-1].end
+        else:
+            previous_pos = None
+
         self = self.update_tool(tool)
+
         # Prefer inner wires first
         commands = []
         if inner_wires and inner_offset is not None:
@@ -172,6 +178,7 @@ class Job:
                     offset=inner_offset,
                     stepdown=stepdown,
                     tabs=tabs,
+                    previous_pos=previous_pos,
                 )
 
         if outer_wires and outer_offset is not None:
@@ -182,6 +189,7 @@ class Job:
                     offset=outer_offset,
                     stepdown=stepdown,
                     tabs=tabs,
+                    previous_pos=previous_pos,
                 )
 
         return self._add_operation("Profile", commands)
@@ -194,7 +202,13 @@ class Job:
         tabs=None,
         tool: Tool | None = None,
     ):
+        if self.operations:
+            previous_pos = self.operations[-1].commands[-1].end
+        else:
+            previous_pos = None
+
         self = self.update_tool(tool)
+
         if isinstance(wires, cq.Wire):
             wires = [wires]
 
@@ -206,6 +220,7 @@ class Job:
                 offset=offset,
                 stepdown=stepdown,
                 tabs=tabs,
+                previous_pos=previous_pos,
             )
         return self._add_operation("Wire Profile", commands)
 
@@ -221,6 +236,11 @@ class Job:
         stepdown: float | None = None,
         tool: Tool | None = None,
     ) -> Job:
+        if self.operations:
+            previous_pos = self.operations[-1].commands[-1].end
+        else:
+            previous_pos = None
+
         self = self.update_tool(tool)
         if isinstance(op_areas, cq.Workplane):
             op_areas = op_areas.objects
@@ -242,20 +262,31 @@ class Job:
             avoid_inner_offset=avoid_inner_offset,
             stepover=stepover,
             stepdown=stepdown,
+            previous_pos=previous_pos,
         )
         return self._add_operation("Pocket", commands)
 
     def drill(self, op_areas, tool: Tool | None = None, **kwargs) -> Job:
         from cq_cam.operations.drill import Drill
 
+        if self.operations:
+            previous_pos = self.operations[-1].commands[-1].end
+        else:
+            previous_pos = None
+
         self = self.update_tool(tool)
-        drill = Drill(self, o=op_areas, **kwargs)
+        drill = Drill(self, o=op_areas, previous_pos=previous_pos, **kwargs)
         return self._add_operation("Drill", drill.commands)
 
     def surface3d(self, *args, **kwargs) -> Job:
         from cq_cam.operations.op3d import Surface3D
 
-        surface3d = Surface3D(self, *args, **kwargs)
+        if self.operations:
+            previous_pos = self.operations[-1].commands[-1].end
+        else:
+            previous_pos = None
+
+        surface3d = Surface3D(self, previous_pos=previous_pos, *args, **kwargs)
         return self._add_operation("Surface 3D", surface3d.commands)
 
     @staticmethod

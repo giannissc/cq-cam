@@ -33,6 +33,7 @@ def profile(
     offset: float,
     stepdown: int | None = None,
     tabs: Tabs | None = None,
+    previous_pos: AddressVector | None = None,
 ):
     """
     A 2.5D profile operation
@@ -44,6 +45,9 @@ def profile(
     :param tabs:
     :return:
     """
+    if previous_pos is None:
+        previous_pos = AddressVector()
+
     # Transform to relative coordinates
     wire = wire.transformShape(job.top.fG)
 
@@ -84,7 +88,7 @@ def profile(
 
         toolpaths += layers
 
-    commands = route_wires(job, toolpaths)
+    commands = route_wires(job, toolpaths, previous_pos=previous_pos)
     return commands
 
 

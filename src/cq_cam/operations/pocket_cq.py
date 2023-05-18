@@ -146,6 +146,7 @@ def pocket_cq(
     avoid_outer_offset: float,
     avoid_inner_offset: float,
     stepover: float,
+    previous_pos: AddressVector,
 ):
     # Offset faces
     offset_op_areas = []
@@ -167,7 +168,6 @@ def pocket_cq(
 
     # Route wires
     commands = []
-    previous_pos = AddressVector()
     for sequence_wires in sequences:
         commands += route_wires(
             job, sequence_wires, stepover=stepover, previous_pos=previous_pos

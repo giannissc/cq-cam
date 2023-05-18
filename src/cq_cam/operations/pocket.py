@@ -38,7 +38,11 @@ def pocket(
     stepover: OffsetInput | None = None,
     stepdown: float | None = None,
     engine: Literal["clipper", "cq"] = "clipper",
+    previous_pos: AddressVector | None = None,
 ):
+    if previous_pos is None:
+        previous_pos = AddressVector()
+
     if avoid_areas is None:
         avoid_areas = []
 
@@ -68,6 +72,7 @@ def pocket(
             avoid_inner_offset,
             stepover,
             stepdown,
+            previous_pos,
         )
     elif engine == "cq":
         return pocket_cq(
@@ -79,6 +84,7 @@ def pocket(
             avoid_outer_offset,
             avoid_inner_offset,
             stepover,
+            previous_pos,
         )
     else:
         raise ValueError("Unknown engine")
@@ -234,6 +240,7 @@ def pocket_clipper(
     avoid_inner_offset: float,
     stepover: float,
     stepdown: float,
+    previous_pos: AddressVector,
 ):
     # Offset faces
     offset_op_areas: list[PathFace] = []
@@ -267,7 +274,6 @@ def pocket_clipper(
 
     # Route wires
     commands = []
-    previous_pos = AddressVector()
     for sequence_polyfaces in sequences:
         commands += route_polyface_outers(
             job, sequence_polyfaces, stepover=stepover, previous_pos=previous_pos

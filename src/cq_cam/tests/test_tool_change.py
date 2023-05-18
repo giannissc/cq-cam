@@ -20,7 +20,16 @@ def test_same_tool_diameter(job: Job, big_box, operation):
     job = operation(job, face, tool=tool_1)
     job = operation(job, face, tool=tool_2)
 
-    assert job.operations[1].to_gcode() == job.operations[3].to_gcode()
+    op1 = job.operations[1].to_gcode().split("\n")
+    op2 = job.operations[3].to_gcode().split("\n")
+
+    print(op1)
+    print(op2)
+
+    if operation.__name__ == "pocket":
+        assert "\n".join(op1[2:]) == "\n".join(op2[2:])
+    else:
+        assert "\n".join(op1[2:]) == "\n".join(op2[1:])
 
 
 @pytest.mark.parametrize("operation", [Job.pocket, Job.profile])
