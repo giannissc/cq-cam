@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from copy import copy
-from typing import Union
+from typing import Literal, Union
 
 from cadquery import cq
 
@@ -46,7 +46,6 @@ class Operation:
             if not gcode:
                 continue
             gcodes.append(gcode)
-
         return "\n".join(gcodes)
 
 
@@ -235,6 +234,7 @@ class Job:
         stepover: OffsetInput | None = None,
         stepdown: float | None = None,
         tool: Tool | None = None,
+        engine: Literal["clipper", "cq"] = "cq",
     ) -> Job:
         if self.operations:
             previous_pos = self.operations[-1].commands[-1].end
@@ -263,6 +263,7 @@ class Job:
             stepover=stepover,
             stepdown=stepdown,
             previous_pos=previous_pos,
+            engine=engine
         )
         return self._add_operation("Pocket", commands)
 
