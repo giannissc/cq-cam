@@ -88,8 +88,8 @@ def offset_wire(
             face = cq.Face.makeFromWires(wire)
             # Todo arbitrary..
             # How should one detect whether offset is possible??
-            if face.Area() > 0.1:
-                validated_wires.append(wire)
+            # if face.Area() > 0.1:
+            validated_wires.append(wire)
         except StdFail_NotDone:
             logger.warning("Failed to offset wire")
         except:
@@ -118,7 +118,7 @@ def offset_path(path: ClosedPath, offset: float, precision: int) -> list[Path]:
 
     # To get a little more leeway, we divide the precision by two
     # noinspection PyArgumentList
-    scaled_precision = pc.scale_to_clipper(10**-precision / 2)
+    scaled_precision = pc.scale_to_clipper(10**-precision / 8)
 
     # Use a scaled miter limit of 2. This is the default
     # noinspection PyArgumentList

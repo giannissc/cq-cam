@@ -4,7 +4,7 @@ from typing import Union
 import cadquery as cq
 
 from cq_cam.address import AddressVector
-from cq_cam.command import PlungeCut, Rapid
+from cq_cam.command import PlungeCut, Rapid, PlungeRapid, Retract
 from cq_cam.operations.base_operation import Operation, OperationError
 from cq_cam.operations.strategy import Strategy
 from cq_cam.utils.utils import flatten_list
@@ -25,7 +25,7 @@ class Drill(Operation):
     def __post_init__(self):
         # TODO max depth
         # TODO evacuate chips?
-        transform_f = self.job.top.toWorldCoords
+        transform_f = self.job.top.toLocalCoords
         drill_vectors: list[cq.Vector] = []
         if self.previous_pos is None:
             self.previous_pos = AddressVector()
@@ -38,19 +38,15 @@ class Drill(Operation):
 
         for obj in self._o_objects(self.o):
             if isinstance(obj, cq.Vector):
-                drill_vectors.append(transform_f(obj))
+                drill_vectors.append(obj)
             elif isinstance(obj, cq.Wire):
-                drill_vectors.append(transform_f(cq.Face.makeFromWires(obj).Center()))
+                drill_vectors.append(cq.Face.makeFromWires(obj).Center())
             elif isinstance(obj, cq.Face):
                 if obj.innerWires():
                     for wire in obj.innerWires():
-                        drill_vectors.append(
-                            transform_f(cq.Face.makeFromWires(wire).Center())
-                        )
+                        drill_vectors.append(cq.Face.makeFromWires(wire).Center())
                 else:
-                    drill_vectors.append(
-                        transform_f(cq.Face.makeFromWires(obj.outerWire()).Center())
-                    )
+                    drill_vectors.append(cq.Face.makeFromWires(obj.outerWire()).Center())
             else:
                 raise OperationError(
                     f'Object type "{type(obj)}" not supported by Profile operation'
@@ -74,11 +70,12 @@ class Drill(Operation):
         depth = -abs(self.depth)
         for point in ordered_drill_points:
             ops = []
-            ops.append(Rapid.abs(z=self.job.op_safe_height, start=self.previous_pos))
+            ops.append(Retract.abs(
+                z=self.job.rapid_height, start=self.previous_pos))
             self.previous_pos = ops[-1].end
             ops.append(Rapid.abs(x=point[0], y=point[1], start=self.previous_pos))
             self.previous_pos = ops[-1].end
-            ops.append(Rapid.abs(z=0, start=self.previous_pos))
+            ops.append(PlungeRapid.abs(z=self.job.op_safe_height, start=self.previous_pos))
             self.previous_pos = ops[-1].end
             ops.append(
                 PlungeCut.abs(z=depth, feed=self.job.feed, start=self.previous_pos)

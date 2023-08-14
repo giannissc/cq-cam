@@ -10,9 +10,28 @@ def circle_bug_workaround(source_wire: cq.Wire, target_wires: list[cq.Wire]):
     :param target_wires:
     :return:
     """
-    if len(source_wire.Edges()) == 1:
-        edge = source_wire.Edges()[0]
-        if edge.startPoint() == edge.endPoint():
-            # OCCT bug with offsetting circles!
-            for target in target_wires:
-                target.wrapped.Location(source_wire.wrapped.Location().Inverted())
+
+    for target_wire in target_wires:
+        source_edges = source_wire.Edges()
+        apply_fix = False
+        for i, target_edge in enumerate(target_wire.Edges()):
+            if target_edge.geomType() == "CIRCLE":
+                if i < len(source_edges):
+                    source_edge = source_edges[i]
+                    # target_edge.wrapped.Location(source_edge.wrapped.Location().Inverted())
+                    apply_fix = True
+        if apply_fix:
+            target_wire.wrapped.Location(
+                source_wire.wrapped.Location().Inverted())
+
+    # for edge in source_wire.Edges():
+    #     geom_type = edge.geomType()
+    #     # print(geom_type)
+
+    #     if geom_type == "CIRCLE":
+    #         print("bug fix")
+    #         print(len(target_wires))
+    #         for target_wire in target_wires:
+    #             for target_edge in target_wire.Edges():
+    #                 target.wrapped.Location(source_wire.wrapped.Location().Inverted())
+

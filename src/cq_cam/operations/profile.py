@@ -49,7 +49,7 @@ def profile(
         previous_pos = AddressVector()
 
     # Transform to relative coordinates
-    wire = wire.transformShape(job.top.fG)
+    # wire = wire.transformShape(job.top.fG)
 
     # Generate base features
     base_features = offset_wire(wire, offset * job.tool_radius)
