@@ -13,6 +13,8 @@ from cq_cam.utils.geometry_op import offset_face, offset_wire
 from cq_cam.utils.tree import Tree
 from cq_cam.utils.utils import break_compound_to_faces
 
+from ocp_vscode import show_object
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -146,6 +148,7 @@ def pocket_cq(
     avoid_outer_offset: float,
     avoid_inner_offset: float,
     stepover: float,
+    stepdown: float,
     previous_pos: AddressVector,
 ):
     # Offset faces
@@ -153,7 +156,8 @@ def pocket_cq(
     offset_avoid_areas = []
 
     for face in op_areas:
-        offset_op_areas += offset_face(face, outer_offset, inner_offset)
+        off_face =  offset_face(face, outer_offset, inner_offset)
+        offset_op_areas += off_face
 
     for face in avoid_areas:
         offset_avoid_areas += offset_face(face, avoid_outer_offset, avoid_inner_offset)
@@ -163,16 +167,26 @@ def pocket_cq(
 
     # Apply pocket fill (convert to Wire)
     sequences: list[list[cq.Wire]] = []
+    start_depth: float = round(job.top_plane_face.CenterOfBoundBox().z, 3)
+    
     for pocket_op in pocket_ops:
-        sequences += fill_pocket_contour_shrink(pocket_op, stepover)
+        stop_depth = round(pocket_op.CenterOfBoundBox().z, 3)
+        current_depth: float = start_depth
+        pocket_offset = pocket_op.translate((0,0,start_depth - stop_depth))
 
+        while current_depth - stepdown > stop_depth:
+            current_depth -= stepdown
+            pocket_offset = pocket_offset.translate((0,0, -stepdown))
+            sequences += fill_pocket_contour_shrink(pocket_offset, stepover)
+        sequences += fill_pocket_contour_shrink(pocket_op, stepover)
     # Route wires
     commands = []
     for sequence_wires in sequences:
+        sequence_wires.reverse()
         commands += route_wires(
             job, sequence_wires, stepover=stepover, previous_pos=previous_pos
         )
         cmd = commands[-1]
         previous_pos = cmd.end
-
+    # print(commands)
     return commands

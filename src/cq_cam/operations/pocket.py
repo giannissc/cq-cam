@@ -57,8 +57,11 @@ def pocket(
     stepover = calculate_offset(job.tool_radius, stepover, 0.5)
 
     # Transform to job plane
-    op_areas = [face.transformShape(job.top.fG) for face in op_areas]
-    avoid_areas = [face.transformShape(job.top.fG) for face in avoid_areas]
+    # op_areas = [face.transformShape(job.top.fG) for face in op_areas]
+    # avoid_areas = [face.transformShape(job.top.fG) for face in avoid_areas]
+
+    if not stepdown:
+        stepdown = job.tool_diameter/2
 
     # TODO stepdown
     if engine == "clipper":
@@ -84,6 +87,7 @@ def pocket(
             avoid_outer_offset,
             avoid_inner_offset,
             stepover,
+            stepdown,
             previous_pos,
         )
     else:
@@ -275,6 +279,7 @@ def pocket_clipper(
     # Route wires
     commands = []
     for sequence_polyfaces in sequences:
+        sequence_polyfaces.reverse()
         commands += route_polyface_outers(
             job, sequence_polyfaces, stepover=stepover, previous_pos=previous_pos
         )
