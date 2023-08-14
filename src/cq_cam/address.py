@@ -233,8 +233,17 @@ class XYZ(GCodeAxisGroup):
 
 class IJK(GCodeAxisGroup):
     def __init__(self, center: AddressVector, precision: int = 3):
-        axis_1 = ArcXAxis(center.x, precision)
-        axis_2 = ArcYAxis(center.y, precision)
-        axis_3 = ArcZAxis(center.z, precision)
+        axis_1 = ""
+        axis_2 = ""
+        axis_3 = ""
+        
+        if center.x != 0:
+            axis_1 = ArcXAxis(center.x, precision)
+        
+        if center.y != 0:
+            axis_2 = ArcYAxis(center.y, precision)
+
+        if center.z != 0:
+            axis_3 = ArcZAxis(center.z, precision)
 
         super().__init__(axis_1, axis_2, axis_3)
