@@ -153,6 +153,8 @@ class Job:
         tabs: Tabs | None = None,
         tool: Tool | None = None,
     ) -> Job:
+        self = self.update_tool(tool)
+        
         if self.tool_diameter is None:
             raise ValueError("Profile requires tool_diameter to be set")
 
@@ -165,7 +167,6 @@ class Job:
         else:
             previous_pos = None
 
-        self = self.update_tool(tool)
 
         # Prefer inner wires first
         commands = []
